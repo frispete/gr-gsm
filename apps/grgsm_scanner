@@ -499,7 +499,8 @@ class assignment_info(object):
 
 
 class channel_info(object):
-    def __init__(self, arfcn, freq, cid, lac, mcc, mnc, ccch_conf, power, neighbours, cell_arfcns, assignments):
+    def __init__(self, arfcn, freq, cid, lac, mcc, mnc, ccch_conf, power, neighbours, cell_arfcns, assignments, ncc,
+                 bcc):
         self.arfcn = arfcn
         self.freq = freq
         self.cid = cid
@@ -511,6 +512,8 @@ class channel_info(object):
         self.neighbours = neighbours
         self.cell_arfcns = cell_arfcns
         self.assignments = assignments
+        self.ncc = ncc
+        self.bcc = bcc
 
     def __lt__(self, other):
         return self.arfcn < other.arfcn
@@ -555,8 +558,8 @@ class channel_info(object):
             self.neighbours, self.cell_arfcns)
 
     def __str__(self):
-        return "ARFCN: %4u, Freq: %6.1fM, CID: %5u, LAC: %5u, MCC: %3u, MNC: %3u, Pwr: %3i" % (
-            self.arfcn, self.freq / 1e6, self.cid, self.lac, self.mcc, self.mnc, self.power)
+        return "ARFCN: %4u, Freq: %6.1fM, CID: %5u, LAC: %5u, MCC: %3u, MNC: %3u, Pwr: %3i, NCC: %d, BCC: %d" % (
+            self.arfcn, self.freq / 1e6, self.cid, self.lac, self.mcc, self.mnc, self.power, self.ncc, self.bcc)
 
 
 def do_scan(samp_rate, band, speed, ppm, gain, args, prn=None, debug=False):
@@ -627,9 +630,13 @@ def do_scan(samp_rate, band, speed, ppm, gain, args, prn=None, debug=False):
                 assignment_channels = numpy.array(scanner.extract_immediate_assignment.get_channel_types())
                 cell_arfcn_lists = []
                 neighbour_lists = []
+                nccs = []
+                bccs = []
                 for i in range(0, len(chans)):
                     cell_arfcn_lists.append(scanner.gsm_extract_system_info.get_cell_arfcns(chans[i]))
                     neighbour_lists.append(scanner.gsm_extract_system_info.get_neighbours(chans[i]))
+                    nccs.append(scanner.wideband_receiver.receivers_with_decoders[chans[i]].gsm_receiver_0.get_ncc())
+                    bccs.append(scanner.wideband_receiver.receivers_with_decoders[chans[i]].gsm_receiver_0.get_bcc())
                 scanner = None
                 gc.collect()
                 for i in range(0, len(chans)):
@@ -717,9 +724,10 @@ def do_scan(samp_rate, band, speed, ppm, gain, args, prn=None, debug=False):
                                                                                a5_versions))
                     if len(found_arfcn_assignments) == 0:
                         print("Dont capture immediate assignments, skip extract SDCCH/8 info and scan...")
+
                     info = channel_info(found_arfcn, found_freqs[i],
                                         cell_ids[i], lacs[i], mccs[i], mncs[i], ccch_confs[i], powers[i],
-                                        neighbour_list, cell_arfcn_list, found_arfcn_assignments)
+                                        neighbour_list, cell_arfcn_list, found_arfcn_assignments, nccs[i], bccs[i])
 
                     print(info)
                     print(info.get_verbose_info())
