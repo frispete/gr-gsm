@@ -21,26 +21,20 @@
 # Boston, MA 02110-1301, USA.
 #
 #
-from gnuradio import blocks
-from gnuradio import network
-from gnuradio import gr
-from gnuradio import eng_notation
-from gnuradio.eng_option import eng_option
-from gnuradio.filter import firdes
-from gnuradio.filter import pfb
-from math import pi
-from optparse import OptionParser
-
-import math
-from gnuradio import gsm
-import numpy
-import os
-import osmosdr
-import pmt
-import time
-import sys
-import gnuradio.gsm.arfcn as arfcn
 import gc
+import math
+import os
+from math import pi
+
+import click
+import gnuradio.gsm.arfcn as arfcn
+import numpy
+import osmosdr
+from gnuradio import blocks
+from gnuradio import gr
+from gnuradio import gsm
+from gnuradio import network
+from gnuradio.filter import pfb
 
 
 class multichannel_receiver(gr.hier_block2):
@@ -562,7 +556,7 @@ class channel_info(object):
             self.arfcn, self.freq / 1e6, self.cid, self.lac, self.mcc, self.mnc, self.power, self.ncc, self.bcc)
 
 
-def do_scan(samp_rate, band, speed, ppm, gain, args, prn=None, debug=False):
+def do_scan(samp_rate, band, speed, ppm, gain, args, debug=False):
     signallist = []
     server = network.socket_pdu('UDP_SERVER', '127.0.0.1', '4729', 10000, False)
     channels_num = int(samp_rate / 0.2e6)
@@ -736,8 +730,6 @@ def do_scan(samp_rate, band, speed, ppm, gain, args, prn=None, debug=False):
 
             scanner = None
 
-            if prn:
-                prn(found_list)
             signallist.extend(found_list)
 
             current_freq += channels_num * 0.2e6
@@ -745,61 +737,24 @@ def do_scan(samp_rate, band, speed, ppm, gain, args, prn=None, debug=False):
     return signallist
 
 
-def argument_parser():
-    parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
-    bands_list = ", ".join(gsm.arfcn.get_bands())
-    parser.add_option("-b", "--band", dest="band", default="GSM900",
-                      help="Specify the GSM band for the frequency.\nAvailable bands are: " + bands_list)
-    parser.add_option("-s", "--samp-rate", dest="samp_rate", type="float", default=2e6,
-                      help="Set sample rate [default=%default] - allowed values even_number*0.2e6")
-    parser.add_option("-p", "--ppm", dest="ppm", type="intx", default=0,
-                      help="Set frequency correction in ppm [default=%default]")
-    parser.add_option("-g", "--gain", dest="gain", type="eng_float", default=24.0,
-                      help="Set gain [default=%default]")
-    parser.add_option("", "--args", dest="args", type="string", default="",
-                      help="Set device arguments [default=%default]."
-                           " Use --list-devices the view the available devices")
-    parser.add_option("-l", "--list-devices", action="store_true",
-                      help="List available SDR devices, use --args to specify hints")
-    parser.add_option("--speed", dest="speed", type="intx", default=15,
-                      help="Scan speed [default=%default]. Value range 0-29.")
-    parser.add_option("-v", "--verbose", action="store_true",
-                      help="If set, verbose information output is printed: ccch configuration, cell ARFCN's, neighbour ARFCN's")
-    parser.add_option("-d", "--debug", action="store_true",
-                      help="Print additional debug messages")
-
+@click.command()
+@click.option('-s', '--samp-rate', default=2e6, type=click.FLOAT,
+              help='Set sample rate [default=2MHz] - allowed values even_number * 0.2e6')
+@click.option('-b', '--band', default='GSM900', type=click.Choice(gsm.arfcn.get_bands(), case_sensitive=False),
+              help='Specify the GSM band for the frequency')
+@click.option('--speed', default=15, type=click.IntRange(0, 29),
+              help='Scan speed [default=15]. Value range 0-29 (higher is faster)')
+@click.option('-p', '--ppm', default=0, type=click.INT, help='Set frequency correction in ppm [default=0]')
+@click.option('-g', '--gain', default=24.0, type=click.FLOAT, help='Set gain [default=24.0]')
+@click.option('-a', '--args', default='', help='Set device arguments')
+def scan(samp_rate, band, speed, ppm, gain, args):
     """
-        Dont forget: sudo sysctl kernel.shmmni=32000
+    Dont forget: sudo sysctl kernel.shmmni=32000
     """
-    return parser
-
-
-def main(options=None):
-    if options is None:
-        (options, args) = argument_parser().parse_args()
-
-    if options.list_devices:
-        gsm.device.print_devices(options.args)
-        sys.exit(0)
-
-    if options.band not in gsm.arfcn.get_bands():
-        parser.error("Invalid GSM band\n")
-
-    if options.speed < 0 or options.speed > 29:
-        parser.error("Invalid scan speed.\n")
-
-    if (options.samp_rate / 0.2e6) % 2 != 0:
-        parser.error("Invalid sample rate. Sample rate must be an even numer * 0.2e6")
-
-    # def printfunc(found_list):
-    # for info in sorted(found_list):
-    #     print(info)
-    #     if options.verbose:
-    #         print(info.get_verbose_info())
-    print("")
-    do_scan(options.samp_rate, options.band, options.speed,
-            options.ppm, options.gain, options.args, prn=None, debug=options.debug)
+    if (samp_rate / 0.2e6) % 2 != 0:
+        raise ValueError('Invalid sample rate. Sample rate must be an even numer * 0.2e6')
+    do_scan(samp_rate, band, speed, ppm, gain, args)
 
 
 if __name__ == '__main__':
-    main()
+    scan()
