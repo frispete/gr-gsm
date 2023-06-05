@@ -22,10 +22,11 @@
 #
 #
 import gc
+import json
 import math
 import os
 from contextlib import contextmanager, nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from math import pi
 
 import click
@@ -701,6 +702,7 @@ def do_scan(samp_rate: float, band: str, speed: int, ppm: int, gain, args, colle
 
 
 @click.command()
+@click.argument('output', type=click.File('w'))
 @click.option('-s', '--samp-rate', default=2e6, type=click.FLOAT,
               help='Set sample rate [default=2MHz] - allowed values even_number * 0.2e6')
 @click.option('-b', '--band', default='GSM900', type=click.Choice(gsm.arfcn.get_bands(), case_sensitive=False),
@@ -711,13 +713,14 @@ def do_scan(samp_rate: float, band: str, speed: int, ppm: int, gain, args, colle
 @click.option('-g', '--gain', default=24.0, type=click.FLOAT, help='Set gain [default=24.0]')
 @click.option('-a', '--args', default='', help='Set device arguments')
 @click.option('--collect-assignments/--no-collect-assignments', default=False)
-def scan(samp_rate, band, speed, ppm, gain, args, collect_assignments):
+def scan(output, samp_rate, band, speed, ppm, gain, args, collect_assignments):
     """
     Dont forget: sudo sysctl kernel.shmmni=32000
     """
     if (samp_rate / 0.2e6) % 2 != 0:
         raise ValueError('Invalid sample rate. Sample rate must be an even numer * 0.2e6')
-    do_scan(samp_rate, band, speed, ppm, gain, args, collect_assignments)
+    results = do_scan(samp_rate, band, speed, ppm, gain, args, collect_assignments)
+    output.write(json.dumps(results, default=asdict, indent=4))
 
 
 if __name__ == '__main__':
