@@ -556,7 +556,7 @@ class channel_info(object):
             self.arfcn, self.freq / 1e6, self.cid, self.lac, self.mcc, self.mnc, self.power, self.ncc, self.bcc)
 
 
-def do_scan(samp_rate, band, speed, ppm, gain, args, debug=False):
+def do_scan(samp_rate, band, speed, ppm, gain, args, collect_assignments=False, debug=False):
     signallist = []
     server = network.socket_pdu('UDP_SERVER', '127.0.0.1', '4729', 10000, False)
     channels_num = int(samp_rate / 0.2e6)
@@ -643,7 +643,7 @@ def do_scan(samp_rate, band, speed, ppm, gain, args, debug=False):
                     for a in range(0, len(assignment_arfcns)):
 
                         # print("Assigments: " + str(assignment_arfcns[a]) + "<->" + str(chans[i]))
-                        if assignment_arfcns[a] == chans[i]:
+                        if assignment_arfcns[a] == chans[i] and collect_assignments:
                             dubl = False
                             for f in found_arfcn_assignments:
                                 if f.assignment_channel == assignment_channels[a] and \
@@ -747,13 +747,14 @@ def do_scan(samp_rate, band, speed, ppm, gain, args, debug=False):
 @click.option('-p', '--ppm', default=0, type=click.INT, help='Set frequency correction in ppm [default=0]')
 @click.option('-g', '--gain', default=24.0, type=click.FLOAT, help='Set gain [default=24.0]')
 @click.option('-a', '--args', default='', help='Set device arguments')
-def scan(samp_rate, band, speed, ppm, gain, args):
+@click.option('--collect-assignments/--no-collect-assignments', default=False)
+def scan(samp_rate, band, speed, ppm, gain, args, collect_assignments):
     """
     Dont forget: sudo sysctl kernel.shmmni=32000
     """
     if (samp_rate / 0.2e6) % 2 != 0:
         raise ValueError('Invalid sample rate. Sample rate must be an even numer * 0.2e6')
-    do_scan(samp_rate, band, speed, ppm, gain, args)
+    do_scan(samp_rate, band, speed, ppm, gain, args, collect_assignments)
 
 
 if __name__ == '__main__':
