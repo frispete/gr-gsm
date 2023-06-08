@@ -715,13 +715,15 @@ def do_scan(samp_rate: float, band: str, speed: int, ppm: int, gain, args, colle
 @click.option('-g', '--gain', default=24.0, type=click.FLOAT, help='Set gain [default=24.0]')
 @click.option('-a', '--args', default='', help='Set device arguments')
 @click.option('--collect-assignments/--no-collect-assignments', default=False)
-def scan(output, samp_rate, band, speed, ppm, gain, args, collect_assignments):
+@click.option('--debug/--no-debug', default=False)
+def scan(output, samp_rate, band, speed, ppm, gain, args, collect_assignments, debug):
     """
     Dont forget: sudo sysctl kernel.shmmni=32000
     """
     if (samp_rate / 0.2e6) % 2 != 0:
         raise ValueError('Invalid sample rate. Sample rate must be an even numer * 0.2e6')
-    results = do_scan(samp_rate, band, speed, ppm, gain, args, collect_assignments)
+    print(f'Scanning band {band} on device {args}')
+    results = do_scan(samp_rate, band, speed, ppm, gain, args, collect_assignments, debug)
     output.write(json.dumps(results, default=asdict, indent=4))
 
 
