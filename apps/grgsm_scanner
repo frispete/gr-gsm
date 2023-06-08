@@ -685,6 +685,8 @@ def scan_freq(current_freq, channels_num, samp_rate, speed, ppm, gain, args, col
 def do_scan(samp_rate: float, band: str, speed: int, ppm: int, gain, args, collect_assignments=False, debug=False):
     signallist = []
     channels_num = int(samp_rate / 0.2e6)
+    total_scans = math.ceil(sum(map(lambda x: x[1] - x[0], gsm.arfcn.get_arfcn_ranges(band))) / channels_num)
+    scan_index = 0
     for first_arfcn, last_arfcn in gsm.arfcn.get_arfcn_ranges(band):
         print(f'Try scan CCCH on {first_arfcn} - {last_arfcn} arfcn`s:')
         start_freq = gsm.arfcn.arfcn2downlink(first_arfcn + int(channels_num / 2) - 1)
@@ -692,11 +694,11 @@ def do_scan(samp_rate: float, band: str, speed: int, ppm: int, gain, args, colle
         stop_freq = last_freq + 0.2e6 * channels_num
 
         for current_freq in numpy.arange(start_freq, stop_freq, int(samp_rate)):
-            percent = (current_freq - start_freq) / (stop_freq - start_freq) * 100
-            print(f'Scanning: {current_freq} {percent:.2f}% done..')
+            print(f'Scanning: {scan_index / total_scans * 100:.2f}% done..')
             found_list = scan_freq(current_freq, channels_num, samp_rate, speed, ppm, gain, args, collect_assignments,
                                    debug)
             signallist.extend(found_list)
+            scan_index += 1
 
     return signallist
 
